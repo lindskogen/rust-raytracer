@@ -264,25 +264,14 @@ pub fn render_into_buffer(buffer: &mut Vec<u32>, c: u8, col_offset: usize, row_o
     for y in 0..5 {
         for x in 0..5 {
             if (FONT_DATA[(c as usize) * 5 + y] & (1 << x)) == (1 << x) {
-                let offs = x + col_offset + (y+1) * row_offset;
-                buffer[offs * 4] = black;
-                buffer[offs * 4 + 1] = black;
-                buffer[offs * 4 + 2] = black;
-                buffer[offs * 4 + 3] = black;
-                buffer[offs * 4 + row_offset] = black;
-                buffer[offs * 4 + row_offset+1] = black;
-                buffer[offs * 4 + row_offset+2] = black;
-                buffer[offs * 4 + row_offset+3] = black;
+                let offs = x + col_offset + (y + 1) * row_offset;
 
-                buffer[offs * 4 + 2 * row_offset] = black;
-                buffer[offs * 4 + 2 * row_offset + 1] = black;
-                buffer[offs * 4 + 2 * row_offset + 2] = black;
-                buffer[offs * 4 + 2 * row_offset + 3] = black;
-
-                buffer[offs * 4 + 3 * row_offset] = black;
-                buffer[offs * 4 + 3 * row_offset + 1] = black;
-                buffer[offs * 4 + 3 * row_offset + 2] = black;
-                buffer[offs * 4 + 3 * row_offset + 3] = black;
+                for i in 0..4 {
+                    buffer[offs * 4 + i * row_offset] = black;
+                    buffer[offs * 4 + i * row_offset + 1] = black;
+                    buffer[offs * 4 + i * row_offset + 2] = black;
+                    buffer[offs * 4 + i * row_offset + 3] = black;
+                }
             }
         }
     }

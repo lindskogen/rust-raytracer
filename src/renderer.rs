@@ -1,5 +1,6 @@
 use cgmath::{InnerSpace, vec3, Vector3, Vector4, Zero};
 use rand::random;
+use rayon::prelude::*;
 
 use crate::camera::Camera;
 use crate::ray::Ray;
@@ -28,7 +29,6 @@ impl Default for Renderer {
 }
 
 impl Renderer {
-
     pub fn reset_frame_index(&mut self) {
         self.frame_index = 1;
     }
@@ -36,27 +36,34 @@ impl Renderer {
     pub fn on_resize(&mut self, width: usize, height: usize) {
         self.accumulation_data.resize(width * height, Vector4::zero());
     }
+
+    fn render_pixels_in_parallel(&self, scene: &Scene, camera: &Camera) -> Vec<(usize, usize, Vector4<f32>)> {
+        (0..camera.viewport_height).into_par_iter().flat_map_iter(|y| {
+            (0..camera.viewport_width).map(move |x| {
+                (x, y, self.per_pixel(scene, camera, x, y, camera.viewport_width))
+            })
+        }).collect()
+    }
+
     pub fn render(&mut self, scene: &Scene, camera: &Camera, buffer: &mut Vec<u32>) {
         if self.frame_index == 1 {
             self.accumulation_data.fill(Vector4::zero());
         }
 
-        for y in 0..camera.viewport_height {
-            for x in 0..camera.viewport_width {
-                let color = self.per_pixel(scene, camera, x, y, camera.viewport_width);
+        let pixels = self.render_pixels_in_parallel(scene, camera);
 
-                self.accumulation_data[x + y * camera.viewport_width] += color;
-                let mut acc_color = self.accumulation_data[x + y * camera.viewport_width];
+        for (x, y, color) in pixels {
+            self.accumulation_data[x + y * camera.viewport_width] += color;
+            let mut acc_color = self.accumulation_data[x + y * camera.viewport_width];
 
-                acc_color /= self.frame_index as f32;
+            acc_color /= self.frame_index as f32;
 
-                acc_color.x = acc_color.x.clamp(0.0, 1.0);
-                acc_color.y = acc_color.y.clamp(0.0, 1.0);
-                acc_color.z = acc_color.z.clamp(0.0, 1.0);
-                acc_color.w = acc_color.w.clamp(0.0, 1.0);
+            acc_color.x = acc_color.x.clamp(0.0, 1.0);
+            acc_color.y = acc_color.y.clamp(0.0, 1.0);
+            acc_color.z = acc_color.z.clamp(0.0, 1.0);
+            acc_color.w = acc_color.w.clamp(0.0, 1.0);
 
-                buffer[x + y * camera.viewport_width] = convert_to_rgba(acc_color);
-            }
+            buffer[x + y * camera.viewport_width] = convert_to_rgba(acc_color);
         }
 
         self.frame_index += 1;
@@ -98,7 +105,6 @@ impl Renderer {
 
         color.extend(1.0)
     }
-
 
     fn trace_ray(&self, ray: &Ray, scene: &Scene) -> Option<HitPayload> {
         let mut closest = None;
