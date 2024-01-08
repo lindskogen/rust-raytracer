@@ -99,12 +99,12 @@ impl Camera {
         }
 
         if window.is_key_down(Key::A) {
-            self.position += right_direction * speed * ts;
+            self.position -= right_direction * speed * ts;
             moved = true;
         }
 
         if window.is_key_down(Key::D) {
-            self.position -= right_direction * speed * ts;
+            self.position += right_direction * speed * ts;
             moved = true;
         }
 
@@ -128,7 +128,7 @@ impl Camera {
             let yaw_delta = delta.x * self.get_rotation_speed();
 
 
-            let q = Quaternion::from(Euler::new(Rad(-pitch_delta), Rad(yaw_delta), Rad(0.0))).normalize();
+            let q = Quaternion::from(Euler::new(Rad(-pitch_delta), Rad(-yaw_delta), Rad(0.0))).normalize();
 
             self.forward_direction = q.rotate_vector(self.forward_direction);
 

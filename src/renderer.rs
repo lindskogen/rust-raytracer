@@ -1,4 +1,5 @@
-use cgmath::{InnerSpace, vec3, Vector3, Vector4, Zero};
+use cgmath::{ElementWise, InnerSpace, vec3, Vector3, Vector4, Zero};
+use cgmath::prelude::*;
 use rand::random;
 use rayon::prelude::*;
 
@@ -63,7 +64,7 @@ impl Renderer {
             acc_color.z = acc_color.z.clamp(0.0, 1.0);
             acc_color.w = acc_color.w.clamp(0.0, 1.0);
 
-            buffer[x + y * camera.viewport_width] = convert_to_rgba(acc_color);
+            buffer[x + (camera.viewport_height - y-1) * camera.viewport_width] = convert_to_rgba(acc_color);
         }
 
         self.frame_index += 1;
@@ -73,37 +74,34 @@ impl Renderer {
         let mut ray = Ray { origin: camera.get_position(), direction: camera.get_ray_directions()[x + y * width] };
 
 
-        let mut color = Vector3::zero();
-        let mut multiplier = 1.0;
+        let mut light = Vector3::zero();
+        let mut contribution = vec3::<f32>(1.0, 1.0, 1.0);
 
         let bounces = 5;
 
         for _ in 0..bounces {
             match self.trace_ray(&ray, scene) {
                 Some(payload) if payload.hit_distance > 0.0 => {
-                    let light_dir = vec3(-1.0, -1.0, -1.0).normalize();
-                    let light_intensity = payload.world_normal.dot(-light_dir).max(0.0);
-
                     let sphere = &scene.spheres[payload.object_index];
                     let material = sphere.mat;
 
-                    let sphere_color = material.albedo * light_intensity;
-                    color += sphere_color * multiplier;
 
-                    multiplier *= 0.5;
+                    contribution.mul_assign_element_wise(material.albedo);
+                    light += material.get_emission();
 
                     ray.origin = payload.world_position + payload.world_normal * 0.0001;
 
-                    ray.direction = reflect(ray.direction, payload.world_normal + material.roughness * random_vector3(-0.5, 0.5));
+                    ray.direction = (payload.world_normal + random_in_unit_sphere()).normalize()
                 }
                 _ => {
-                    color += vec3(0.6, 0.7, 0.9) * multiplier;
+
+                    // light += vec3(0.6, 0.7, 0.9).mul_element_wise(contribution);
                     break;
                 }
             }
         }
 
-        color.extend(1.0)
+        light.extend(1.0)
     }
 
     fn trace_ray(&self, ray: &Ray, scene: &Scene) -> Option<HitPayload> {
@@ -170,4 +168,8 @@ fn reflect(incident: Vector3<f32>, normal: Vector3<f32>) -> Vector3<f32> {
 
 fn random_vector3(min: f32, max: f32) -> Vector3<f32> {
     vec3(random::<f32>() * (max - min) + min, random::<f32>() * (max - min) + min, random::<f32>() * (max - min) + min)
+}
+
+fn random_in_unit_sphere() -> Vector3<f32> {
+    vec3(random(), random(), random()).normalize()
 }

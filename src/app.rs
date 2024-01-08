@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use cgmath::vec3;
+use cgmath::{vec3, Vector3, Zero};
 use minifb::Window;
 
 use crate::camera::Camera;
@@ -17,8 +17,9 @@ pub struct App {
     last_render_time: Duration,
 }
 
-const PINK: Material = Material { roughness: 0.0, albedo: vec3(1.0, 0.0, 1.0), metallic: 0.0 };
-const BLUE: Material = Material { roughness: 0.1, albedo: vec3(0.2, 0.3, 1.0), metallic: 0.0 };
+const PINK: Material = Material { roughness: 0.0, albedo: vec3(1.0, 0.0, 1.0), metallic: 0.0, emission_power: 0.0, emission_color: vec3(0.0, 0.0, 0.0) };
+const BLUE: Material = Material { roughness: 0.1, albedo: vec3(0.2, 0.3, 1.0), metallic: 0.0, emission_power: 0.0, emission_color: vec3(0.0, 0.0, 0.0) };
+const ORANGE: Material = Material { roughness: 0.1, albedo: vec3(0.8, 0.5, 0.2), metallic: 0.0, emission_power: 20.0, emission_color: vec3(0.8, 0.5, 0.2) };
 
 
 impl App {
@@ -28,12 +29,18 @@ impl App {
         scene.spheres.push(Sphere {
             mat: &PINK,
             position: vec3(0.0, 0.0, 0.0),
-            radius: 0.5,
+            radius: 1.0,
+        });
+
+        scene.spheres.push(Sphere {
+            mat: &ORANGE,
+            position: vec3(32.0, -101.0, 0.0),
+            radius: 100.0,
         });
 
         scene.spheres.push(Sphere {
             mat: &BLUE,
-            position: vec3(0.0, -101.0, 0.0),
+            position: vec3(0.0, 101.0, 0.0),
             radius: 100.0,
         });
 

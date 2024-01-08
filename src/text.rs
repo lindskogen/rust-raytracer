@@ -260,17 +260,20 @@ const FONT_DATA: [u8; 1280] = [
 
 
 pub fn render_into_buffer(buffer: &mut Vec<u32>, c: u8, col_offset: usize, row_offset: usize) {
-    let black = 0xff000000;
+    let black = 0xffffffff;
+    let alpha = 0xff000000;
+
     for y in 0..5 {
         for x in 0..5 {
             if (FONT_DATA[(c as usize) * 5 + y] & (1 << x)) == (1 << x) {
                 let offs = x + col_offset + (y + 1) * row_offset;
 
                 for i in 0..4 {
-                    buffer[offs * 4 + i * row_offset] = black;
-                    buffer[offs * 4 + i * row_offset + 1] = black;
-                    buffer[offs * 4 + i * row_offset + 2] = black;
-                    buffer[offs * 4 + i * row_offset + 3] = black;
+                    let idx = offs * 4 + i * row_offset;
+                    buffer[idx] = (buffer[idx] ^ black) | alpha;
+                    buffer[idx + 1] = (buffer[idx + 1] ^ black) | alpha;
+                    buffer[idx + 2] = (buffer[idx + 2] ^ black) | alpha;
+                    buffer[idx + 3] = (buffer[idx + 3] ^ black) | alpha;
                 }
             }
         }
