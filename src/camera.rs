@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cgmath::{Deg, Matrix3, Matrix4, perspective, Point3, Quaternion, Rad, vec2, vec3, vec4, Vector2, Vector3};
+use cgmath::{Deg, Euler, Matrix4, perspective, Point3, Quaternion, Rad, vec2, vec3, vec4, Vector2, Vector3};
 use cgmath::prelude::*;
 use minifb::{CursorStyle, Key, MouseButton, MouseMode, Window};
 
@@ -69,9 +69,9 @@ impl Camera {
     }
 
     pub fn on_update(&mut self, dur: Duration, window: &mut Window) -> bool {
-        let ts = dur.as_secs_f32();
+        let ts = dur.as_secs_f32() * 100.0;
         let mouse_pos = self.get_mouse_pos(window);
-        let delta = (mouse_pos - self.last_mouse_position) * 0.002;
+        let delta = (mouse_pos - self.last_mouse_position) * 0.02;
         self.last_mouse_position = mouse_pos;
 
         if !window.get_mouse_down(MouseButton::Right) {
@@ -86,7 +86,7 @@ impl Camera {
         const UP_DIRECTION: Vector3<f32> = vec3(0.0, 1.0, 0.0);
 
         let right_direction = self.forward_direction.cross(UP_DIRECTION);
-        let speed = 5.0f32;
+        let speed = 500.0f32;
 
         if window.is_key_down(Key::W) {
             self.position += self.forward_direction * speed * ts;
@@ -99,12 +99,12 @@ impl Camera {
         }
 
         if window.is_key_down(Key::A) {
-            self.position -= right_direction * speed * ts;
+            self.position += right_direction * speed * ts;
             moved = true;
         }
 
         if window.is_key_down(Key::D) {
-            self.position += right_direction * speed * ts;
+            self.position -= right_direction * speed * ts;
             moved = true;
         }
 
@@ -118,17 +118,23 @@ impl Camera {
             moved = true;
         }
 
+        if moved {
+            println!("{:?}", self.position);
+        }
+
 
         if delta.x != 0.0 || delta.y != 0.0 {
             let pitch_delta = delta.y * self.get_rotation_speed();
             let yaw_delta = delta.x * self.get_rotation_speed();
 
 
-            let m1 = Matrix3::from_angle_x(Rad(-pitch_delta));
-            let m2 = Matrix3::from_angle_y(Rad(-yaw_delta));
-            let q = Quaternion::from(m1 * m2).normalize();
+            let q = Quaternion::from(Euler::new(Rad(-pitch_delta), Rad(yaw_delta), Rad(0.0))).normalize();
 
             self.forward_direction = q.rotate_vector(self.forward_direction);
+
+            let angle = Deg::from(self.forward_direction.angle(vec3(0.0, 1.0, 0.0)));
+
+            println!("angle: {:?}", angle);
 
             moved = true;
         }
@@ -150,7 +156,7 @@ impl Camera {
         self.inverse_projection = self.projection.invert().unwrap();
     }
     fn recalculate_view(&mut self) {
-        self.view = self.view * Matrix4::look_to_lh(Point3::from_vec(self.position), self.position + self.forward_direction, vec3(0.0, 1.0, 0.0));
+        self.view = Matrix4::look_to_lh(Point3::from_vec(self.position), self.position + self.forward_direction, vec3(0.0, 1.0, 0.0));
 
 
         self.inverse_view = self.view.invert().unwrap();

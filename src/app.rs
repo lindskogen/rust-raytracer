@@ -64,13 +64,18 @@ impl App {
         self.renderer.render(&self.scene, &self.camera, buffer);
 
         self.last_render_time = time.elapsed();
+
+        self.render_elapsed(buffer);
+    }
+
+    fn render_elapsed(&self, buffer: &mut Vec<u32>) {
         let t = self.last_render_time.as_millis() as u8;
         let mut x_offset = 0;
         if t > 9 {
             let c = 0x30 + ((t / 10) % 10);
             render_into_buffer(buffer, c, x_offset, self.viewport_width);
-            x_offset = 5;
         }
+        x_offset = 5;
 
         let c = 0x30 + (t % 10);
         render_into_buffer(buffer, c, x_offset, self.viewport_width);
