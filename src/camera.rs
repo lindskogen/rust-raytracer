@@ -42,7 +42,7 @@ impl Camera {
             near_clip,
             far_clip,
             position: vec3(0.0, 0.0, 6.0),
-            forward_direction: vec3(0.0, 0.0, -1.0),
+            forward_direction: vec3(0.0, 0.0, 1.0),
             ray_directions: Vec::new(),
             last_mouse_position: Vector2::zero(),
             viewport_width: 0,
@@ -118,23 +118,16 @@ impl Camera {
             moved = true;
         }
 
-        if moved {
-            println!("{:?}", self.position);
-        }
-
 
         if delta.x != 0.0 || delta.y != 0.0 {
             let pitch_delta = delta.y * self.get_rotation_speed();
-            let yaw_delta = delta.x * self.get_rotation_speed();
+            let yaw_delta = -delta.x * self.get_rotation_speed();
 
-
-            let q = Quaternion::from(Euler::new(Rad(-pitch_delta), Rad(-yaw_delta), Rad(0.0))).normalize();
+            let pitch_part = Quaternion::from_axis_angle(right_direction, Rad(pitch_delta));
+            let yaw_part = Quaternion::from_axis_angle(UP_DIRECTION, Rad(yaw_delta));
+            let q = (yaw_part * pitch_part).normalize();
 
             self.forward_direction = q.rotate_vector(self.forward_direction);
-
-            let angle = Deg::from(self.forward_direction.angle(vec3(0.0, 1.0, 0.0)));
-
-            println!("angle: {:?}", angle);
 
             moved = true;
         }
@@ -156,7 +149,7 @@ impl Camera {
         self.inverse_projection = self.projection.invert().unwrap();
     }
     fn recalculate_view(&mut self) {
-        self.view = Matrix4::look_to_lh(Point3::from_vec(self.position), self.position + self.forward_direction, vec3(0.0, 1.0, 0.0));
+        self.view = Matrix4::look_to_lh(Point3::from_vec(self.position), self.forward_direction, vec3(0.0, 1.0, 0.0));
 
 
         self.inverse_view = self.view.invert().unwrap();

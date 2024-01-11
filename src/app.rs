@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use cgmath::{vec3, Vector3, Zero};
+use cgmath::vec3;
 use minifb::Window;
 
 use crate::camera::Camera;

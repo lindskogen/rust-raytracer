@@ -41,7 +41,7 @@ impl Renderer {
     fn render_pixels_in_parallel(&self, scene: &Scene, camera: &Camera) -> Vec<(usize, usize, Vector4<f32>)> {
         (0..camera.viewport_height).into_par_iter().flat_map_iter(|y| {
             (0..camera.viewport_width).map(move |x| {
-                (x, y, self.per_pixel(scene, camera, x, y, camera.viewport_width))
+                (x, y, self.per_pixel(scene, camera, x, y))
             })
         }).collect()
     }
@@ -59,19 +59,15 @@ impl Renderer {
 
             acc_color /= self.frame_index as f32;
 
-            acc_color.x = acc_color.x.clamp(0.0, 1.0);
-            acc_color.y = acc_color.y.clamp(0.0, 1.0);
-            acc_color.z = acc_color.z.clamp(0.0, 1.0);
-            acc_color.w = acc_color.w.clamp(0.0, 1.0);
-
-            buffer[x + (camera.viewport_height - y-1) * camera.viewport_width] = convert_to_rgba(acc_color);
+            write_to_buffer_inverted(camera.viewport_width, camera.viewport_height, buffer, x, y, acc_color);
         }
 
         self.frame_index += 1;
     }
 
-    fn per_pixel(&self, scene: &Scene, camera: &Camera, x: usize, y: usize, width: usize) -> Vector4<f32> {
-        let mut ray = Ray { origin: camera.get_position(), direction: camera.get_ray_directions()[x + y * width] };
+
+    fn per_pixel(&self, scene: &Scene, camera: &Camera, x: usize, y: usize) -> Vector4<f32> {
+        let mut ray = Ray { origin: camera.get_position(), direction: camera.get_ray_directions()[x + y * camera.viewport_width] };
 
 
         let mut light = Vector3::zero();
@@ -151,6 +147,16 @@ impl Renderer {
         }
     }
 }
+
+fn write_to_buffer_inverted(width: usize, height: usize, buffer: &mut Vec<u32>, x: usize, y: usize, mut acc_color: Vector4<f32>) {
+    acc_color.x = acc_color.x.clamp(0.0, 1.0);
+    acc_color.y = acc_color.y.clamp(0.0, 1.0);
+    acc_color.z = acc_color.z.clamp(0.0, 1.0);
+    acc_color.w = acc_color.w.clamp(0.0, 1.0);
+
+    buffer[x + (height - y - 1) * width] = convert_to_rgba(acc_color);
+}
+
 
 fn convert_to_rgba(color: Vector4<f32>) -> u32 {
     let r = (color.x * 255.0) as u8;
