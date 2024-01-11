@@ -51,6 +51,7 @@ impl Renderer {
             self.accumulation_data.fill(Vector4::zero());
         }
 
+
         let pixels = self.render_pixels_in_parallel(scene, camera);
 
         for (x, y, color) in pixels {
@@ -87,6 +88,7 @@ impl Renderer {
 
                     ray.origin = payload.world_position + payload.world_normal * 0.0001;
 
+                    // ray.direction = reflect(ray.direction, payload.world_normal + material.roughness * random_vector3(-0.5, 0.5)).normalize()
                     ray.direction = (payload.world_normal + random_in_unit_sphere()).normalize()
                 }
                 _ => {
@@ -120,7 +122,7 @@ impl Renderer {
                 continue;
             }
 
-            let closest_t = -b - discriminant.sqrt() / (2.0 * a);
+            let closest_t = (-b - discriminant.sqrt()) / (2.0 * a);
 
             if closest_t > 0.0 && closest_t < hit_distance {
                 hit_distance = closest_t;
@@ -133,17 +135,18 @@ impl Renderer {
     }
 
     fn closest_hit(&self, ray: &Ray, scene: &Scene, hit_distance: f32, object_index: usize) -> HitPayload {
-        let sphere = &scene.spheres[object_index];
+        let closest_sphere = &scene.spheres[object_index];
 
-        let origin = ray.origin - sphere.position;
-
+        let origin = ray.origin - closest_sphere.position;
         let world_position = origin + ray.direction * hit_distance;
+
+        let world_normal = world_position.normalize() + closest_sphere.position;
 
         HitPayload {
             hit_distance,
             object_index,
             world_position,
-            world_normal: world_position.normalize(),
+            world_normal,
         }
     }
 }
@@ -177,5 +180,5 @@ fn random_vector3(min: f32, max: f32) -> Vector3<f32> {
 }
 
 fn random_in_unit_sphere() -> Vector3<f32> {
-    vec3(random(), random(), random()).normalize()
+    random_vector3(-1.0, 1.0).normalize()
 }

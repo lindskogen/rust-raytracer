@@ -89,22 +89,22 @@ impl Camera {
         let speed = 500.0f32;
 
         if window.is_key_down(Key::W) {
-            self.position += self.forward_direction * speed * ts;
-            moved = true;
-        }
-
-        if window.is_key_down(Key::S) {
             self.position -= self.forward_direction * speed * ts;
             moved = true;
         }
 
+        if window.is_key_down(Key::S) {
+            self.position += self.forward_direction * speed * ts;
+            moved = true;
+        }
+
         if window.is_key_down(Key::A) {
-            self.position -= right_direction * speed * ts;
+            self.position += right_direction * speed * ts;
             moved = true;
         }
 
         if window.is_key_down(Key::D) {
-            self.position += right_direction * speed * ts;
+            self.position -= right_direction * speed * ts;
             moved = true;
         }
 
