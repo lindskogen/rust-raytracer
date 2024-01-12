@@ -43,11 +43,12 @@ impl Material {
 pub struct Sphere {
     pub position: Vector3<f32>,
     pub radius: f32,
-    pub mat: &'static Material,
+    pub material_index: usize,
 }
 
 #[derive(Default)]
 pub struct Scene {
     pub spheres: Vec<Sphere>,
+    pub materials: Vec<Material>,
     pub global_illumination: bool,
 }

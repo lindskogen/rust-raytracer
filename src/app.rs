@@ -1,7 +1,6 @@
 use std::time::{Duration, Instant};
 
 use cgmath::{vec3, ElementWise, MetricSpace};
-use minifb::Key::M;
 use minifb::Window;
 use rand::random;
 
@@ -42,42 +41,47 @@ impl App {
     pub fn new(width: usize, height: usize) -> Self {
         let mut scene = Scene::default();
 
+        scene.materials.push(PINK);
+        scene.materials.push(ORANGE);
+        scene.materials.push(BLUE);
+        scene.materials.push(GROUND);
+
         match SCENE_VARIANT {
             SceneVariant::ChernoSun => {
                 scene.spheres.push(Sphere {
-                    mat: &PINK,
+                    material_index: 0,
                     position: vec3(0.0, 0.0, 0.0),
                     radius: 1.0,
                 });
 
                 scene.spheres.push(Sphere {
-                    mat: &ORANGE,
+                    material_index: 1,
                     position: vec3(32.0, 32.0, -32.0),
                     radius: 20.0,
                 });
 
                 scene.spheres.push(Sphere {
-                    mat: &BLUE,
                     position: vec3(0.0, -101.0, 0.0),
+                    material_index: 2,
                     radius: 100.0,
                 });
                 scene.global_illumination = false;
             }
             SceneVariant::ChernoBalls => {
                 scene.spheres.push(Sphere {
-                    mat: &PINK,
+                    material_index: 0,
                     position: vec3(0.0, 0.0, 0.0),
                     radius: 1.0,
                 });
 
                 scene.spheres.push(Sphere {
-                    mat: &ORANGE,
+                    material_index: 1,
                     position: vec3(2.0, 0.0, 0.0),
                     radius: 1.0,
                 });
 
                 scene.spheres.push(Sphere {
-                    mat: &BLUE,
+                    material_index: 2,
                     position: vec3(0.0, -101.0, 0.0),
                     radius: 100.0,
                 });
@@ -87,7 +91,13 @@ impl App {
                 scene.spheres.push(Sphere {
                     position: vec3(0.0, -1000.0, 0.0),
                     radius: 1000.0,
-                    mat: &GROUND,
+                    material_index: 3,
+                });
+
+                scene.spheres.push(Sphere {
+                    position: vec3(0.0, 1.0, 0.0),
+                    radius: 1.0,
+                    material_index: 0,
                 });
 
                 let scene_center = vec3(4.0, 0.2, 0.0);
@@ -101,20 +111,15 @@ impl App {
 
                         if center.distance(scene_center) > 0.9 {
                             let albedo = random_vector3().mul_element_wise(random_vector3());
+                            scene.materials.push(Material::lambertian(albedo));
                             scene.spheres.push(Sphere {
-                                mat: &PINK,
+                                material_index: scene.materials.len() - 1,
                                 position: center,
                                 radius: 0.2,
                             })
                         }
                     }
                 }
-
-                scene.spheres.push(Sphere {
-                    position: vec3(0.0, 1.0, 0.0),
-                    radius: 1.0,
-                    mat: &BROWN,
-                });
 
                 scene.global_illumination = true;
             }

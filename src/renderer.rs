@@ -5,7 +5,9 @@ use rayon::prelude::*;
 use crate::camera::Camera;
 use crate::ray::Ray;
 use crate::scene::Scene;
-use crate::utils::pcg_vec3;
+use crate::utils::{
+    pcg_vec3, random_in_unit_sphere, random_vector3, random_vector3_in_range, reflect,
+};
 
 struct HitPayload {
     hit_distance: f32,
@@ -92,11 +94,11 @@ impl Renderer {
         for i in 0..bounces {
             seed = seed.wrapping_add(i);
             match self.trace_ray(&ray, scene) {
-                Some(payload) if payload.hit_distance > 0.0 => {
+                Some(payload) => {
                     let sphere = &scene.spheres[payload.object_index];
-                    let material = sphere.mat;
+                    let material = &scene.materials[sphere.material_index];
 
-                    contribution.mul_assign_element_wise(material.albedo);
+                    contribution = contribution.mul_element_wise(material.albedo);
                     light += material.get_emission();
 
                     ray.origin = payload.world_position + payload.world_normal * 0.0001;
