@@ -10,6 +10,7 @@ mod renderer;
 mod scene;
 mod ray;
 mod text;
+mod utils;
 
 const WIDTH: usize = 712;
 const HEIGHT: usize = 400;

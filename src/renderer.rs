@@ -1,11 +1,11 @@
-use cgmath::{ElementWise, InnerSpace, vec3, Vector3, Vector4, Zero};
 use cgmath::prelude::*;
-use rand::random;
+use cgmath::{vec3, ElementWise, InnerSpace, Vector3, Vector4, Zero};
 use rayon::prelude::*;
 
 use crate::camera::Camera;
 use crate::ray::Ray;
 use crate::scene::Scene;
+use crate::utils::pcg_vec3;
 
 struct HitPayload {
     hit_distance: f32,
@@ -20,8 +20,7 @@ pub struct Renderer {
 }
 
 impl Default for Renderer {
-    fn default() -> Self
-    {
+    fn default() -> Self {
         Self {
             frame_index: 1,
             accumulation_data: Vec::new(),
@@ -35,22 +34,27 @@ impl Renderer {
     }
 
     pub fn on_resize(&mut self, width: usize, height: usize) {
-        self.accumulation_data.resize(width * height, Vector4::zero());
+        self.accumulation_data
+            .resize(width * height, Vector4::zero());
     }
 
-    fn render_pixels_in_parallel(&self, scene: &Scene, camera: &Camera) -> Vec<(usize, usize, Vector4<f32>)> {
-        (0..camera.viewport_height).into_par_iter().flat_map_iter(|y| {
-            (0..camera.viewport_width).map(move |x| {
-                (x, y, self.per_pixel(scene, camera, x, y))
+    fn render_pixels_in_parallel(
+        &self,
+        scene: &Scene,
+        camera: &Camera,
+    ) -> Vec<(usize, usize, Vector4<f32>)> {
+        (0..camera.viewport_height)
+            .into_par_iter()
+            .flat_map_iter(|y| {
+                (0..camera.viewport_width).map(move |x| (x, y, self.per_pixel(scene, camera, x, y)))
             })
-        }).collect()
+            .collect()
     }
 
     pub fn render(&mut self, scene: &Scene, camera: &Camera, buffer: &mut Vec<u32>) {
         if self.frame_index == 1 {
             self.accumulation_data.fill(Vector4::zero());
         }
-
 
         let pixels = self.render_pixels_in_parallel(scene, camera);
 
@@ -60,28 +64,37 @@ impl Renderer {
 
             acc_color /= self.frame_index as f32;
 
-            write_to_buffer_inverted(camera.viewport_width, camera.viewport_height, buffer, x, y, acc_color);
+            write_to_buffer_inverted(
+                camera.viewport_width,
+                camera.viewport_height,
+                buffer,
+                x,
+                y,
+                acc_color,
+            );
         }
 
         self.frame_index += 1;
     }
 
-
     fn per_pixel(&self, scene: &Scene, camera: &Camera, x: usize, y: usize) -> Vector4<f32> {
-        let mut ray = Ray { origin: camera.get_position(), direction: camera.get_ray_directions()[x + y * camera.viewport_width] };
-
+        let mut ray = Ray {
+            origin: camera.get_position(),
+            direction: camera.get_ray_directions()[x + y * camera.viewport_width],
+        };
 
         let mut light = Vector3::zero();
         let mut contribution = vec3::<f32>(1.0, 1.0, 1.0);
+        let mut seed: u32 = (x + y * camera.viewport_width).wrapping_mul(self.frame_index) as u32;
 
         let bounces = 5;
 
-        for _ in 0..bounces {
+        for i in 0..bounces {
+            seed = seed.wrapping_add(i);
             match self.trace_ray(&ray, scene) {
                 Some(payload) if payload.hit_distance > 0.0 => {
                     let sphere = &scene.spheres[payload.object_index];
                     let material = sphere.mat;
-
 
                     contribution.mul_assign_element_wise(material.albedo);
                     light += material.get_emission();
@@ -89,11 +102,12 @@ impl Renderer {
                     ray.origin = payload.world_position + payload.world_normal * 0.0001;
 
                     // ray.direction = reflect(ray.direction, payload.world_normal + material.roughness * random_vector3(-0.5, 0.5)).normalize()
-                    ray.direction = (payload.world_normal + random_in_unit_sphere()).normalize()
+                    ray.direction = (payload.world_normal + pcg_vec3(&mut seed)).normalize()
                 }
                 _ => {
-
-                    // light += vec3(0.6, 0.7, 0.9).mul_element_wise(contribution);
+                    if scene.global_illumination {
+                        light += vec3(0.6, 0.7, 0.9).mul_element_wise(contribution);
+                    }
                     break;
                 }
             }
@@ -130,11 +144,16 @@ impl Renderer {
             }
         }
 
-
         closest.map(|hit| self.closest_hit(ray, scene, hit_distance, hit))
     }
 
-    fn closest_hit(&self, ray: &Ray, scene: &Scene, hit_distance: f32, object_index: usize) -> HitPayload {
+    fn closest_hit(
+        &self,
+        ray: &Ray,
+        scene: &Scene,
+        hit_distance: f32,
+        object_index: usize,
+    ) -> HitPayload {
         let closest_sphere = &scene.spheres[object_index];
 
         let origin = ray.origin - closest_sphere.position;
@@ -151,7 +170,14 @@ impl Renderer {
     }
 }
 
-fn write_to_buffer_inverted(width: usize, height: usize, buffer: &mut Vec<u32>, x: usize, y: usize, mut acc_color: Vector4<f32>) {
+fn write_to_buffer_inverted(
+    width: usize,
+    height: usize,
+    buffer: &mut Vec<u32>,
+    x: usize,
+    y: usize,
+    mut acc_color: Vector4<f32>,
+) {
     acc_color.x = acc_color.x.clamp(0.0, 1.0);
     acc_color.y = acc_color.y.clamp(0.0, 1.0);
     acc_color.z = acc_color.z.clamp(0.0, 1.0);
@@ -160,7 +186,6 @@ fn write_to_buffer_inverted(width: usize, height: usize, buffer: &mut Vec<u32>, 
     buffer[x + (height - y - 1) * width] = convert_to_rgba(acc_color);
 }
 
-
 fn convert_to_rgba(color: Vector4<f32>) -> u32 {
     let r = (color.x * 255.0) as u8;
     let g = (color.y * 255.0) as u8;
@@ -168,17 +193,4 @@ fn convert_to_rgba(color: Vector4<f32>) -> u32 {
     let a = (color.w * 255.0) as u8;
 
     ((a as u32) << 24) | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32)
-}
-
-fn reflect(incident: Vector3<f32>, normal: Vector3<f32>) -> Vector3<f32> {
-    incident - 2.0 * normal.dot(incident) * normal
-}
-
-
-fn random_vector3(min: f32, max: f32) -> Vector3<f32> {
-    vec3(random::<f32>() * (max - min) + min, random::<f32>() * (max - min) + min, random::<f32>() * (max - min) + min)
-}
-
-fn random_in_unit_sphere() -> Vector3<f32> {
-    random_vector3(-1.0, 1.0).normalize()
 }
